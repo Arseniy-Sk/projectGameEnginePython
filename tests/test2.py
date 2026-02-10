@@ -9,12 +9,13 @@ from gamelib import *
 
 
 class MyGame(Game):
-    def __init__(self, title="2d game", width=800, height=600):
-        super().__init__(title, width, height)
+    def __init__(self, title="2d game", width=800, height=600, background_color="black"):
+        super().__init__(title, width, height, background_color="black")
         
         SCENE_SWITCHER = SceneSwitcher()
         self.sceneSwitcher = SCENE_SWITCHER
         self.frame_count = 0
+        self.input_manager = None
 
     def setup(self):
         # Создаем главную сцену
@@ -39,24 +40,29 @@ class MyGame(Game):
             BasePhisicComponent(mass=10, gravity=False)
         )
         
+        image_path = os.path.join(os.path.dirname(__file__), "resources/images/123123123.jpg")
+
         self.green_obj = gameObject.Rectangle(
             MainScene.canvas, 
-            x=350, y=50, width=60, height=120, 
-            color='green', 
+            x=350, y=50, width=120, height=120, 
+            color='white', 
             scene=MainScene
-        )
+        ).add_component(ImageComponent(image_path))
+        self.green_obj.add_component(BasePhisicComponent(20, False))
         
         # Показываем сцену
         self.sceneSwitcher.show_scene(MainScene)
         
         # Запускаем импульс для синего объекта через 2 секунды
         self.window.root.after(2000, self.apply_impulse_to_blue)
+        
+        # Инициализируем InputManager
+        self.input_manager = InputManager(self.window.root)
 
     def apply_impulse_to_blue(self):
         """Применяет импульс к синему объекту"""
         print("Применяем импульс к синему объекту!")
         
-        # Получаем физический компонент синего объекта
         blue_physics = None
         for comp in self.blue_obj.components:
             if isinstance(comp, BasePhisicComponent):
@@ -76,6 +82,7 @@ class MyGame(Game):
 
     def update(self):
         self.frame_count += 1
+        
         if self.frame_count % 60 == 0:
             print(f"Update: кадр {self.frame_count}")
             
@@ -88,11 +95,26 @@ class MyGame(Game):
             
             if red_physics:
                 red_physics.impulse(5, Vector2(0.2, -0.8).normalized())
+        
+        # Проверяем нажатие клавиши E
+        if self.input_manager and self.input_manager.key == 'e':
+            green_physics = None
+            for comp in self.green_obj.components:
+                if isinstance(comp, BasePhisicComponent):
+                    green_physics = comp
+                    break
+                
+            if green_physics:
+                green_physics.impulse(30, Vector2(0, -1).normalized(), 
+                                    lambda: print("Импульс зеленого объекта завершен!"))
+                
+            # Сбрасываем клавишу после обработки
+            self.input_manager.key = ' '
 
 
 def main():
     # Создаем игру
-    game = MyGame(title="Тестовая игра 2", width=800, height=600)
+    game = MyGame()
     
     # Создаем движок и связываем его с игрой
     GAME_ENGINE = Engine(game)

@@ -2,12 +2,13 @@ import tkinter as tk
 from gamelib.core.model.render.render_scene_obj import create_canvas
 
 class main_game_window():
-    def __init__(self, name, width, height):
+    def __init__(self, name, width, height, background_color):
         self.name = name
         self.width = width
         self.height = height
         __root = tk.Tk()
         self.root = __root
+        self.background_color = background_color
 
         self.create_main_game_window(self.name, self.width, self.height, self.root)
 
@@ -19,6 +20,6 @@ class main_game_window():
 
 
     def add_scene(self):
-        return create_canvas(self.root, self.width, self.height, "white")
+        return create_canvas(self.root, self.width, self.height, self.background_color)
     
         

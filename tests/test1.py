@@ -16,7 +16,7 @@ GAME_ENGINE = Engine()
 GAME_ENGINE.print_engine_info()
 
 # Create main game window   
-MAIN_GAME_WINDOW = main_game_window("TEST game 1 - Smooth Impulse", 800, 600)
+MAIN_GAME_WINDOW = main_game_window("TEST game 1 - Smooth Impulse", 800, 600, 'white')
 
 # Create scenes using static method
 MainScene = Scene(MAIN_GAME_WINDOW)

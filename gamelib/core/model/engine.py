@@ -67,8 +67,8 @@ class Engine():
 
 
 class Game:
-    def __init__(self, title, width, height):
-        MAIN_GAME_WINDOW = main_game_window(title, width, height)
+    def __init__(self, title, width, height, background_color):
+        MAIN_GAME_WINDOW = main_game_window(title, width, height, background_color)
         self.window = MAIN_GAME_WINDOW
         self.engine = None  # Ссылка на движок
     
