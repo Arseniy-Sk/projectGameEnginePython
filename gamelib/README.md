@@ -59,4 +59,25 @@ ImageComponent(SecondScene.canvas, image_path)
 
 10. 
 
-Компонент с базовой физикой (передвижение) - ошибка.
+
+
+
+
+Пояснения
+Теперь при подписке нужно указывать источник (конкретный объект или компонент) и тип события. Можно также подписаться на все события данного типа от любых объектов, передав source=None.
+
+Встроенные события:
+
+Физика: gravity_started, gravity_stopped, impulse_started, impulse_finished
+
+Коллайдер: collision_enter, collision_exit, trigger_enter, trigger_exit
+
+GameObject: position_changed, destroyed
+
+ImageComponent: image_loaded
+
+Пример кастомного события custom_event генерируется по таймеру.
+
+Подписка на события от конкретных компонентов позволяет точно реагировать только на нужные объекты.
+
+Эта система проста и легко расширяема. Можно добавлять новые типы событий в любом месте, просто вызывая global_bus.emit().

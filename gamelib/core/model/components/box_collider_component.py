@@ -1,4 +1,5 @@
 from gamelib.core.model.components.image_for_base_gameObj import Component
+from gamelib.core.model.events.events_system import global_bus
 
 class Box_collider(Component):
     def __init__(self, is_trigger: bool):
@@ -42,6 +43,12 @@ class Box_collider(Component):
         # Check collision with coordinate
         if (coords1[0] < coords2[2] and coords1[2] > coords2[0] and
             coords1[1] < coords2[3] and coords1[3] > coords2[1]):
+
+            # Генерируем событие столкновения
+            global_bus.emit(self.obj, 'collision_enter', {
+                'other': self.obj2,
+                'is_trigger': self.is_trigger
+            })
 
             if not self.is_trigger:
                 if hasattr(self.obj2, 'components'):

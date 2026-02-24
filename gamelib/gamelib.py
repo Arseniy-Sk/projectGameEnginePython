@@ -7,3 +7,4 @@ from gamelib.core.model.components.base_phisic_component import *
 from gamelib.core.model.components.box_collider_component import *
 from gamelib.core.model.vectors.verctor2 import *
 from gamelib.core.model.input.input_system import *
+from gamelib.core.model.events.events_system import *

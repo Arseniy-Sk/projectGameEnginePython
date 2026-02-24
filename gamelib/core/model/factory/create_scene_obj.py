@@ -1,5 +1,6 @@
 from gamelib.core.model.render.render_scene_obj import *
 from gamelib.core.model.scenes.scene import *
+from gamelib.core.model.events.events_system import global_bus
 
 class GameObject():
     def __init__(self, x=0, y=0, width=50, height=50, canvas=None, scene=None):
@@ -40,6 +41,8 @@ class GameObject():
         dx = new_x - self.x
         dy = new_y - self.y
         
+        old_pos = (self.x, self.y)
+        
         # Update object coordinates
         self.x = new_x
         self.y = new_y
@@ -51,6 +54,17 @@ class GameObject():
         for component in self.components:
             if hasattr(component, 'update_position'):
                 component.update_position(dx, dy)
+
+        # Генерируем событие изменения позиции
+        global_bus.emit(self, 'position_changed', {
+            'old': old_pos,
+            'new': (new_x, new_y),
+            'dx': dx,
+            'dy': dy
+        })
+
+    def AddListener(self):
+        pass
 
 
 class gameObject():
