@@ -1,7 +1,6 @@
-# gamelib/core/model/events/events_system.py
+#imports
 
 class Event:
-    """Событие, содержащее источник, тип и данные."""
     def __init__(self, source, event_type, data=None):
         self.source = source
         self.type = event_type
@@ -9,7 +8,7 @@ class Event:
 
 
 class EventBus:
-    """Шина событий с поддержкой подписки на конкретный источник и тип."""
+    """Шина событий"""
     def __init__(self):
         # Ключ: (source, event_type) — может быть None для любого источника/типа
         self._subscribers = {}
@@ -66,5 +65,5 @@ class EventBus:
                 cb(event)
 
 
-# Глобальная шина для простоты использования
+# Global event system
 global_bus = EventBus()
