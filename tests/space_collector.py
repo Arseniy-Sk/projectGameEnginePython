@@ -1,403 +1,536 @@
-# space_collector.py
+# space_collector_fixed.py
 import sys
 import os
 import random
+import math
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from gamelib import *
-from gamelib.core.model.events.events_system import global_bus
+
+# Константы игры
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 600
+PLAYER_SIZE = 30
+CRYSTAL_SIZE = 15
+ASTEROID_SIZE = 25
+WALL_SIZE = 10
 
 class SpaceCollector(Game):
     def __init__(self):
-        super().__init__("Космический коллектор", 1024, 768, "midnight blue")
+        super().__init__("Space Collector", SCREEN_WIDTH, SCREEN_HEIGHT, "#000033")  # Темно-синий фон
         self.scene_switcher = SceneSwitcher()
-        self.frame_count = 0
         self.input_manager = None
         self.score = 0
-        self.collectibles = []
-        self.obstacles = []
-        self.game_active = False
+        self.lives = 3
         self.game_over = False
+        self.paused = False
         
-        # Настройка игры
-        self.game_scene = None
-        self.menu_scene = None
-        self.player = None
+        # Списки объектов
+        self.crystals = []
+        self.asteroids = []
+        
+        # Для отладки
+        self.debug_mode = True
         
     def setup(self):
-        """Инициализация игры"""
-        # Создаем сцены
-        self.menu_scene = Scene(self.window)
-        self.game_scene = Scene(self.window)
+        print("\n" + "="*50)
+        print("SPACE COLLECTOR - ИСПРАВЛЕННАЯ ВЕРСИЯ")
+        print("="*50)
+        print("\nУПРАВЛЕНИЕ:")
+        print("  ← → ↑ ↓ - движение")
+        print("  SPACE - выстрел (остановка астероидов)")
+        print("  P - пауза")
+        print("  R - рестарт")
+        print("  ESC - выход")
+        print("\nЦЕЛЬ: Собирать зеленые кристаллы, избегать красных астероидов!")
+        print("="*50 + "\n")
         
-        # Настраиваем меню
-        self.setup_menu_scene()
+        # Создаем главную сцену
+        self.main_scene = Scene(self.window)
         
-        # Настраиваем игровую сцену
-        self.setup_game_scene()
+        # Создаем игрока
+        self.create_player()
         
-        # Показываем меню
-        self.scene_switcher.show_scene(self.menu_scene)
+        # Создаем стены
+        self.create_walls()
         
-        # Инициализируем систему ввода
+        # Создаем GUI в отдельном фрейме
+        self.setup_gui()
+        
+        # Показываем сцену
+        self.scene_switcher.show_scene(self.main_scene)
+        
+        # Настраиваем ввод
         self.input_manager = InputManager(self.window.root)
         
         # Подписываемся на события
-        self.setup_event_listeners()
+        self.setup_events()
         
-        print("Игра инициализирована! Нажмите SPACE для старта")
+        # Запускаем спавн объектов
+        self.spawn_crystal()
+        self.spawn_asteroid()
+        
+        print("=== ИГРА ЗАПУЩЕНА! ===\n")
     
-    def setup_menu_scene(self):
-        """Создание меню"""
-        # Заголовок
-        title = gameObject.Rectangle(
-            self.menu_scene.canvas,
-            x=312, y=200, width=400, height=80,
-            color='gold',
-            scene=self.menu_scene
-        )
-        
-        # Создаем текстовый объект через компонент изображения
-        # Вместо этого используем прямоугольники для создания надписей
-        
-        # Инструкции
-        inst1 = gameObject.Rectangle(
-            self.menu_scene.canvas,
-            x=362, y=320, width=300, height=40,
-            color='light blue',
-            scene=self.menu_scene
-        )
-        
-        inst2 = gameObject.Rectangle(
-            self.menu_scene.canvas,
-            x=362, y=380, width=300, height=40,
-            color='light blue',
-            scene=self.menu_scene
-        )
-        
-        inst3 = gameObject.Rectangle(
-            self.menu_scene.canvas,
-            x=362, y=440, width=300, height=40,
-            color='light blue',
-            scene=self.menu_scene
-        )
-        
-        # Анимированные звезды в меню
-        for i in range(10):
-            star = gameObject.Rectangle(
-                self.menu_scene.canvas,
-                x=random.randint(50, 974),
-                y=random.randint(50, 718),
-                width=5, height=5,
-                color='white',
-                scene=self.menu_scene
-            )
-            # Добавляем небольшую гравитацию для эффекта падающих звезд
-            star_physics = BasePhisicComponent(mass=random.randint(1, 5), gravity=True)
-            star.add_component(star_physics)
-            
-    def setup_game_scene(self):
-        """Создание игровой сцены"""
-        # Создаем игрока - космический корабль (зеленый треугольник через прямоугольник)
+    def create_player(self):
+        """Создание игрока с компонентами"""
+        # Основной объект - космический корабль (ромб)
         self.player = gameObject.Rectangle(
-            self.game_scene.canvas,
-            x=512, y=684, width=40, height=40,
-            color='lime green',
-            scene=self.game_scene
+            self.main_scene.canvas,
+            x=SCREEN_WIDTH//2 - PLAYER_SIZE//2,
+            y=SCREEN_HEIGHT//2 - PLAYER_SIZE//2,
+            width=PLAYER_SIZE,
+            height=PLAYER_SIZE,
+            color='cyan',
+            scene=self.main_scene
         )
         
-        # Добавляем физику игроку
-        player_physics = BasePhisicComponent(mass=20, gravity=False)
-        self.player.add_component(player_physics)
+        # Добавляем физику с очень маленькой массой для быстрого движения
+        self.player_physics = BasePhisicComponent(mass=5, gravity=False)
+        self.player.add_component(self.player_physics)
         
-        # Добавляем коллайдер для игрока
-        player_collider = Box_collider(is_trigger=True)
-        self.player.add_component(player_collider)
+        # Добавляем коллайдер
+        self.player_collider = Box_collider(is_trigger=False)
+        self.player.add_component(self.player_collider)
         
-        # Создаем границы экрана (невидимые стены)
-        self.create_boundaries()
-        
-        # Создаем первоначальные объекты
-        self.spawn_collectibles(5)
-        self.spawn_obstacles(3)
-        
-        # Добавляем информацию о счете (используем прямоугольники как индикаторы)
-        self.score_display = gameObject.Rectangle(
-            self.game_scene.canvas,
-            x=10, y=10, width=200, height=30,
-            color='dark blue',
-            scene=self.game_scene
-        )
+        print(f"✓ Игрок создан в позиции {self.player.get_position()}")
     
-    def create_boundaries(self):
-        """Создание границ экрана"""
-        # Левая стена
-        left_wall = gameObject.Rectangle(
-            self.game_scene.canvas,
-            x=-10, y=0, width=10, height=768,
-            color='gray',
-            scene=self.game_scene
-        )
-        left_wall_physics = BasePhisicComponent(mass=1000, gravity=False)
-        left_wall.add_component(left_wall_physics)
-        
-        # Правая стена
-        right_wall = gameObject.Rectangle(
-            self.game_scene.canvas,
-            x=1024, y=0, width=10, height=768,
-            color='gray',
-            scene=self.game_scene
-        )
-        right_wall_physics = BasePhisicComponent(mass=1000, gravity=False)
-        right_wall.add_component(right_wall_physics)
+    def create_walls(self):
+        """Создание стен по краям экрана"""
+        wall_color = '#666666'
         
         # Верхняя стена
-        top_wall = gameObject.Rectangle(
-            self.game_scene.canvas,
-            x=0, y=-10, width=1024, height=10,
-            color='gray',
-            scene=self.game_scene
+        self.top_wall = gameObject.Rectangle(
+            self.main_scene.canvas,
+            x=0, y=0,
+            width=SCREEN_WIDTH,
+            height=WALL_SIZE,
+            color=wall_color,
+            scene=self.main_scene
         )
-        top_wall_physics = BasePhisicComponent(mass=1000, gravity=False)
-        top_wall.add_component(top_wall_physics)
         
-        # Нижняя стена (с ней игрок проигрывает)
-        bottom_wall = gameObject.Rectangle(
-            self.game_scene.canvas,
-            x=0, y=768, width=1024, height=10,
-            color='red',
-            scene=self.game_scene
+        # Нижняя стена
+        self.bottom_wall = gameObject.Rectangle(
+            self.main_scene.canvas,
+            x=0, y=SCREEN_HEIGHT - WALL_SIZE,
+            width=SCREEN_WIDTH,
+            height=WALL_SIZE,
+            color=wall_color,
+            scene=self.main_scene
         )
-        bottom_wall_physics = BasePhisicComponent(mass=1000, gravity=False)
-        bottom_wall.add_component(bottom_wall_physics)
+        
+        # Левая стена
+        self.left_wall = gameObject.Rectangle(
+            self.main_scene.canvas,
+            x=0, y=0,
+            width=WALL_SIZE,
+            height=SCREEN_HEIGHT,
+            color=wall_color,
+            scene=self.main_scene
+        )
+        
+        # Правая стена
+        self.right_wall = gameObject.Rectangle(
+            self.main_scene.canvas,
+            x=SCREEN_WIDTH - WALL_SIZE, y=0,
+            width=WALL_SIZE,
+            height=SCREEN_HEIGHT,
+            color=wall_color,
+            scene=self.main_scene
+        )
+        
+        # Добавляем коллайдеры к стенам
+        for wall in [self.top_wall, self.bottom_wall, self.left_wall, self.right_wall]:
+            collider = Box_collider(is_trigger=False)
+            wall.add_component(collider)
+            collider.check_collision(self.player, lambda: self.on_wall_collision())
     
-    def spawn_collectibles(self, count):
-        """Создание собираемых объектов (золотые монеты)"""
-        for i in range(count):
-            x = random.randint(100, 900)
-            y = random.randint(100, 600)
+    def setup_gui(self):
+        """Настройка интерфейса"""
+        # Создаем фрейм для GUI справа
+        self.gui_frame = tk.Frame(self.window.root, bg='#222222', relief='raised', bd=3)
+        self.gui_frame.place(x=SCREEN_WIDTH + 10, y=10, width=180, height=300)
+        
+        # Заголовок
+        title_label = Label(self.gui_frame, "SPACE COLLECTOR", ("Arial", 12, "bold"))
+        title_label.pack(pady=10)
+        
+        # Счет
+        self.score_label = Label(
+            self.gui_frame,
+            f"Счет: {self.score}",
+            ("Arial", 14, "bold")
+        )
+        self.score_label.pack(pady=5)
+        
+        # Жизни
+        self.lives_label = Label(
+            self.gui_frame,
+            f"Жизни: {self.lives}",
+            ("Arial", 14)
+        )
+        self.lives_label.pack(pady=5)
+        
+        # Статус
+        self.status_label = Label(
+            self.gui_frame,
+            "ИГРА",
+            ("Arial", 12, "bold")
+        )
+        self.status_label.pack(pady=10)
+        
+        # Кнопки управления
+        pause_btn = Button(
+            self.gui_frame,
+            "Пауза (P)",
+            self.toggle_pause,
+            ("Arial", 10)
+        )
+        pause_btn.pack(pady=5, fill='x', padx=10)
+        
+        restart_btn = Button(
+            self.gui_frame,
+            "Рестарт (R)",
+            self.restart_game,
+            ("Arial", 10)
+        )
+        restart_btn.pack(pady=5, fill='x', padx=10)
+        
+        # Инструкция
+        instr_text = "← → ↑ ↓ - движение\nSPACE - стоп\nESC - выход"
+        instr_label = Label(
+            self.gui_frame,
+            instr_text,
+            ("Arial", 9)
+        )
+        instr_label.pack(pady=10)
+        
+        # Сообщение Game Over (изначально скрыто)
+        self.game_over_label = Label(
+            self.window.root,
+            "GAME OVER",
+            ("Arial", 32, "bold")
+        )
+    
+    def setup_events(self):
+        """Подписка на события"""
+        global_bus.subscribe(self.player, 'collision_enter', self.on_player_collision)
+        global_bus.subscribe(self.player, 'position_changed', self.on_player_move)
+        
+        if self.debug_mode:
+            global_bus.subscribe(None, None, self.debug_event)
+    
+    def debug_event(self, event):
+        """Отладка событий"""
+        if event.type in ['collision_enter', 'impulse_finished']:
+            print(f"Событие: {event.type} от {type(event.source).__name__}")
+    
+    def spawn_crystal(self):
+        """Создание кристалла"""
+        if self.game_over:
+            self.window.root.after(1000, self.spawn_crystal)
+            return
+        
+        if not self.paused and len(self.crystals) < 5:  # Максимум 5 кристаллов
+            # Случайная позиция
+            x = random.randint(WALL_SIZE + 10, SCREEN_WIDTH - WALL_SIZE - CRYSTAL_SIZE - 10)
+            y = random.randint(WALL_SIZE + 10, SCREEN_HEIGHT - WALL_SIZE - CRYSTAL_SIZE - 10)
             
-            collectible = gameObject.Rectangle(
-                self.game_scene.canvas,
-                x=x, y=y, width=25, height=25,
-                color='gold',
-                scene=self.game_scene
+            # Создаем кристалл
+            crystal = gameObject.Rectangle(
+                self.main_scene.canvas,
+                x=x, y=y,
+                width=CRYSTAL_SIZE,
+                height=CRYSTAL_SIZE,
+                color='#00FF00',  # Ярко-зеленый
+                scene=self.main_scene
             )
             
-            # Добавляем физику с гравитацией
-            collect_physics = BasePhisicComponent(mass=5, gravity=True)
-            collectible.add_component(collect_physics)
+            # Добавляем коллайдер-триггер
+            collider = Box_collider(is_trigger=True)
+            crystal.add_component(collider)
+            collider.check_collision(self.player, lambda c=crystal: self.collect_crystal(c))
             
-            # Добавляем коллайдер как триггер
-            collect_collider = Box_collider(is_trigger=True)
-            collectible.add_component(collect_collider)
+            # Добавляем в список
+            self.crystals.append(crystal)
             
-            # Проверяем коллизию с игроком
-            collect_collider.check_collision(self.player, 
-                                           lambda obj=collectible: self.collect_item(obj))
-            
-            self.collectibles.append(collectible)
+            print(f"✨ Кристалл создан в позиции ({x}, {y})")
+        
+        # Планируем следующий спавн
+        interval = random.randint(2000, 4000)
+        self.window.root.after(interval, self.spawn_crystal)
     
-    def spawn_obstacles(self, count):
-        """Создание препятствий (красные астероиды)"""
-        for i in range(count):
-            x = random.randint(100, 900)
-            y = random.randint(100, 500)
+    def spawn_asteroid(self):
+        """Создание астероида"""
+        if self.game_over:
+            self.window.root.after(1000, self.spawn_asteroid)
+            return
+        
+        if not self.paused and len(self.asteroids) < 3:  # Максимум 3 астероида
+            # Выбираем сторону для спавна
+            side = random.randint(0, 3)
             
-            obstacle = gameObject.Rectangle(
-                self.game_scene.canvas,
-                x=x, y=y, width=40, height=40,
-                color='red',
-                scene=self.game_scene
+            if side == 0:  # сверху
+                x = random.randint(WALL_SIZE, SCREEN_WIDTH - WALL_SIZE - ASTEROID_SIZE)
+                y = -ASTEROID_SIZE - 10
+            elif side == 1:  # справа
+                x = SCREEN_WIDTH + 10
+                y = random.randint(WALL_SIZE, SCREEN_HEIGHT - WALL_SIZE - ASTEROID_SIZE)
+            elif side == 2:  # снизу
+                x = random.randint(WALL_SIZE, SCREEN_WIDTH - WALL_SIZE - ASTEROID_SIZE)
+                y = SCREEN_HEIGHT + 10
+            else:  # слева
+                x = -ASTEROID_SIZE - 10
+                y = random.randint(WALL_SIZE, SCREEN_HEIGHT - WALL_SIZE - ASTEROID_SIZE)
+            
+            # Создаем астероид
+            asteroid = gameObject.Rectangle(
+                self.main_scene.canvas,
+                x=x, y=y,
+                width=ASTEROID_SIZE,
+                height=ASTEROID_SIZE,
+                color='#FF4444',  # Красный
+                scene=self.main_scene
             )
             
             # Добавляем физику
-            obst_physics = BasePhisicComponent(mass=30, gravity=True)
-            obstacle.add_component(obst_physics)
+            physics = BasePhisicComponent(mass=10, gravity=False)
+            asteroid.add_component(physics)
             
-            # Добавляем коллайдер (не триггер - физическое столкновение)
-            obst_collider = Box_collider(is_trigger=False)
-            obstacle.add_component(obst_collider)
+            # Добавляем коллайдер
+            collider = Box_collider(is_trigger=False)
+            asteroid.add_component(collider)
+            collider.check_collision(self.player, lambda a=asteroid: self.hit_by_asteroid(a))
             
-            # Проверяем коллизию с игроком
-            obst_collider.check_collision(self.player, 
-                                        lambda: self.hit_obstacle())
+            # Направление к центру экрана
+            center_x, center_y = SCREEN_WIDTH//2, SCREEN_HEIGHT//2
+            direction = Vector2(center_x - x, center_y - y).normalized()
             
-            self.obstacles.append(obstacle)
+            # Применяем импульс
+            physics.impulse(random.randint(15, 25), direction)
+            
+            # Добавляем в список
+            self.asteroids.append(asteroid)
+            
+            print(f"💫 Астероид создан")
+        
+        # Планируем следующий спавн
+        interval = random.randint(3000, 5000)
+        self.window.root.after(interval, self.spawn_asteroid)
     
-    def setup_event_listeners(self):
-        """Настройка подписок на события"""
-        # Следим за позицией игрока
-        global_bus.subscribe(self.player, 'position_changed', self.on_player_move)
+    def collect_crystal(self, crystal):
+        """Сбор кристалла"""
+        if crystal in self.crystals and not self.game_over:
+            self.crystals.remove(crystal)
+            
+            # Удаляем с канваса
+            if hasattr(crystal, 'rect_id'):
+                self.main_scene.canvas.delete(crystal.rect_id)
+            
+            # Обновляем счет
+            self.score += 10
+            
+            # Обновляем GUI
+            self.score_label.set_text(f"Счет: {self.score}")
+            
+            print(f"✓ Кристалл собран! Счет: {self.score}")
+    
+    def hit_by_asteroid(self, asteroid):
+        """Столкновение с астероидом"""
+        if self.game_over or self.paused:
+            return
         
-        # Следим за коллизиями
-        global_bus.subscribe(None, 'collision_enter', self.on_collision)
+        self.lives -= 1
+        self.lives_label.set_text(f"Жизни: {self.lives}")
         
-        # Следим за завершением импульсов
-        global_bus.subscribe(None, 'impulse_finished', self.on_impulse_finished)
+        print(f"💥 Попадание! Осталось жизней: {self.lives}")
+        
+        if self.lives <= 0:
+            self.game_over = True
+            print("\n=== GAME OVER ===")
+            self.status_label.set_text("GAME OVER")
+            
+            # Показываем сообщение
+            self.game_over_label.pack(pady=200)
+            
+            # Останавливаем все импульсы
+            for obj in self.asteroids:
+                for comp in obj.components:
+                    if isinstance(comp, BasePhisicComponent):
+                        comp.stop_impulse()
+        else:
+            # Визуальный эффект попадания (мигание)
+            self.flash_player()
+    
+    def flash_player(self):
+        """Эффект мигания при попадании"""
+        if hasattr(self.player, 'rect_id'):
+            original_color = 'cyan'
+            self.main_scene.canvas.itemconfig(self.player.rect_id, fill='white')
+            self.window.root.after(100, lambda: self.main_scene.canvas.itemconfig(
+                self.player.rect_id, fill=original_color))
+    
+    def on_wall_collision(self):
+        """Столкновение со стеной"""
+        # Просто отладочное сообщение
+        pass
+    
+    def on_player_collision(self, event):
+        """Обработчик столкновений игрока"""
+        pass  # Обрабатываем в отдельных функциях
     
     def on_player_move(self, event):
-        """Обработка движения игрока"""
-        # Проверяем, не упал ли игрок за нижнюю границу
-        pos = event.data['new']
-        if pos[1] > 750:  # Близко к нижней границе
-            self.game_over = True
-            self.game_active = False
-            print("ИГРА ОКОНЧЕНА! Вы упали!")
+        """Отслеживание движения игрока"""
+        pass
     
-    def on_collision(self, event):
-        """Обработка столкновений"""
-        if event.source == self.player:
-            other = event.data.get('other')
-            if other and other in self.collectibles:
-                # Событие сбора обрабатывается в collect_item
-                pass
-    
-    def on_impulse_finished(self, event):
-        """Обработка завершения импульса"""
-        if event.source == self.player:
-            print("Импульс игрока завершен")
-    
-    def collect_item(self, item):
-        """Сбор предмета"""
-        if item in self.collectibles:
-            self.collectibles.remove(item)
-            self.score += 10
-            print(f"Собрано! Счет: {self.score}")
-            
-            # Удаляем объект с канваса
-            if hasattr(item, 'rect_id') and self.game_scene.canvas:
-                self.game_scene.canvas.delete(item.rect_id)
-            
-            # Создаем новый предмет
-            if len(self.collectibles) < 5:
-                self.spawn_collectibles(1)
-    
-    def hit_obstacle(self):
-        """Столкновение с препятствием"""
-        self.score = max(0, self.score - 5)
-        print(f"Столкновение! Счет: {self.score}")
-        
-        # Отбрасываем игрока
-        player_physics = next(c for c in self.player.components 
-                            if isinstance(c, BasePhisicComponent))
-        
-        # Случайное направление отскока
-        angle = random.randint(0, 360)
-        player_physics.impulse(20, angle)
-    
-    def start(self):
-        """Запуск игры"""
-        super().start()
-        print("Космический коллектор запущен!")
-    
-    def update(self):
-        """Обновление каждого кадра"""
-        self.frame_count += 1
-        
-        if not self.game_active and not self.game_over:
-            # В меню - проверяем пробел для старта
-            if self.input_manager.is_key_down('space'):
-                self.start_game()
-        
-        elif self.game_active:
-            # Управление игроком (только если игра активна)
-            self.handle_player_input()
-            
-            # Обновляем отображение счета
-            if self.frame_count % 30 == 0:
-                print(f"Текущий счет: {self.score}")
-        
-        elif self.game_over:
-            # Обработка окончания игры
-            if self.input_manager.is_key_down('r'):
-                self.restart_game()
-    
-    def handle_player_input(self):
-        """Обработка ввода игрока"""
-        player_physics = next(c for c in self.player.components 
-                            if isinstance(c, BasePhisicComponent))
-        
-        # Движение по WASD
-        move_force = 15
-        move_vector = Vector2(0, 0)
-        
-        if self.input_manager.is_key_down('w'):
-            move_vector = move_vector.add(Vector2(0, -1))
-        if self.input_manager.is_key_down('s'):
-            move_vector = move_vector.add(Vector2(0, 1))
-        if self.input_manager.is_key_down('a'):
-            move_vector = move_vector.add(Vector2(-1, 0))
-        if self.input_manager.is_key_down('d'):
-            move_vector = move_vector.add(Vector2(1, 0))
-        
-        # Применяем импульс, если есть движение
-        if move_vector.magnitude() > 0:
-            player_physics.impulse(move_force, move_vector.normalized())
-        
-        # Специальные способности
-        if self.input_manager.is_key_down('shift_l') or self.input_manager.is_key_down('Shift_L'):
-            # Рывок
-            mouse_pos = self.get_mouse_position()
-            if mouse_pos:
-                player_pos = self.player.get_center()
-                direction = Vector2(mouse_pos[0] - player_pos[0], 
-                                  mouse_pos[1] - player_pos[1])
-                if direction.magnitude() > 0:
-                    player_physics.impulse(40, direction.normalized())
-        
-        # Остановка движения
-        if self.input_manager.is_key_down('x'):
-            player_physics.stop_impulse()
-    
-    def get_mouse_position(self):
-        """Получение позиции мыши (упрощенно)"""
-        # В реальном проекте здесь была бы реализация получения координат мыши
-        return None
-    
-    def start_game(self):
-        """Начало игры"""
-        self.game_active = True
-        self.game_over = False
-        self.score = 0
-        self.scene_switcher.switch_scene(self.menu_scene, self.game_scene)
-        print("ИГРА НАЧАЛАСЬ! Собирайте золотые монеты, избегайте красные препятствия!")
-        print("Управление: WASD - движение, Shift + клик - рывок, X - стоп")
+    def toggle_pause(self):
+        """Пауза/продолжение игры"""
+        if not self.game_over:
+            self.paused = not self.paused
+            self.status_label.set_text("ПАУЗА" if self.paused else "ИГРА")
+            print("⏸ Игра на паузе" if self.paused else "▶ Игра продолжена")
     
     def restart_game(self):
-        """Перезапуск игры"""
-        # Очищаем сцену
-        for obj in self.collectibles + self.obstacles:
-            if hasattr(obj, 'rect_id') and self.game_scene.canvas:
-                self.game_scene.canvas.delete(obj.rect_id)
+        """Рестарт игры"""
+        print("\n🔄 Рестарт игры...")
         
-        self.collectibles = []
-        self.obstacles = []
+        # Убираем сообщение Game Over
+        self.game_over_label.pack_forget()
         
-        # Возвращаем игрока на стартовую позицию
-        self.player.update_position(512, 684)
+        # Очищаем кристаллы
+        for crystal in self.crystals:
+            if hasattr(crystal, 'rect_id'):
+                self.main_scene.canvas.delete(crystal.rect_id)
+        self.crystals.clear()
         
-        # Создаем новые объекты
-        self.spawn_collectibles(5)
-        self.spawn_obstacles(3)
+        # Очищаем астероиды
+        for asteroid in self.asteroids:
+            if hasattr(asteroid, 'rect_id'):
+                self.main_scene.canvas.delete(asteroid.rect_id)
+        self.asteroids.clear()
         
-        self.game_active = True
-        self.game_over = False
+        # Сбрасываем игрока в центр
+        self.player.update_position(
+            SCREEN_WIDTH//2 - PLAYER_SIZE//2,
+            SCREEN_HEIGHT//2 - PLAYER_SIZE//2
+        )
+        
+        # Сбрасываем параметры
         self.score = 0
-        print("ИГРА ПЕРЕЗАПУЩЕНА!")
+        self.lives = 3
+        self.game_over = False
+        self.paused = False
+        
+        # Обновляем GUI
+        self.score_label.set_text(f"Счет: {self.score}")
+        self.lives_label.set_text(f"Жизни: {self.lives}")
+        self.status_label.set_text("ИГРА")
+        
+        print("✓ Игра перезапущена!\n")
+    
+    def shoot(self):
+        """Выстрел - останавливает ближайший астероид"""
+        if self.game_over or self.paused:
+            return
+        
+        player_x, player_y = self.player.get_center()
+        closest_asteroid = None
+        min_distance = float('inf')
+        
+        # Ищем ближайший астероид
+        for asteroid in self.asteroids:
+            ast_x, ast_y = asteroid.get_center()
+            distance = math.sqrt((ast_x - player_x)**2 + (ast_y - player_y)**2)
+            if distance < min_distance:
+                min_distance = distance
+                closest_asteroid = asteroid
+        
+        # Останавливаем ближайший астероид
+        if closest_asteroid and min_distance < 200:
+            for comp in closest_asteroid.components:
+                if isinstance(comp, BasePhisicComponent):
+                    comp.stop_impulse()
+                    print(f"🎯 Астероид остановлен!")
+                    break
+    
+    def update(self):
+        """Игровой цикл"""
+        if self.game_over or self.paused:
+            return
+        
+        # Скорость движения игрока
+        move_speed = 8
+        
+        # Управление с клавиатуры
+        dx, dy = 0, 0
+        
+        if self.input_manager.is_key_down('Left'):
+            dx = -move_speed
+        if self.input_manager.is_key_down('Right'):
+            dx = move_speed
+        if self.input_manager.is_key_down('Up'):
+            dy = -move_speed
+        if self.input_manager.is_key_down('Down'):
+            dy = move_speed
+        
+        # Применяем движение
+        if dx != 0 or dy != 0:
+            current_x, current_y = self.player.get_position()
+            new_x = current_x + dx
+            new_y = current_y + dy
+            
+            # Проверка границ
+            new_x = max(WALL_SIZE, min(new_x, SCREEN_WIDTH - PLAYER_SIZE - WALL_SIZE))
+            new_y = max(WALL_SIZE, min(new_y, SCREEN_HEIGHT - PLAYER_SIZE - WALL_SIZE))
+            
+            self.player.update_position(new_x, new_y)
+        
+        # Обработка клавиш
+        if self.input_manager.is_key_down('space'):
+            self.shoot()
+        
+        if self.input_manager.is_key_down('p'):
+            self.toggle_pause()
+            # Небольшая задержка чтобы не спамить
+            self.window.root.after(200, lambda: None)
+        
+        if self.input_manager.is_key_down('r'):
+            self.restart_game()
+        
+        if self.input_manager.is_key_down('Escape'):
+            self.window.root.quit()
+        
+        # Проверка коллизий со стенами для астероидов
+        for asteroid in self.asteroids[:]:
+            x, y = asteroid.get_position()
+            
+            # Удаляем астероиды, улетевшие далеко
+            if (x < -100 or x > SCREEN_WIDTH + 100 or 
+                y < -100 or y > SCREEN_HEIGHT + 100):
+                self.asteroids.remove(asteroid)
+                self.main_scene.canvas.delete(asteroid.rect_id)
 
 def main():
-    """Главная функция"""
+    # Создаем окно с правильными размерами (с учетом места для GUI)
+    window_width = SCREEN_WIDTH + 200  # Добавляем место для GUI
+    window_height = SCREEN_HEIGHT
+    
+    class CustomGame(SpaceCollector):
+        def __init__(self):
+            super().__init__()
+            # Переопределяем размер окна
+            self.window.width = window_width
+            self.window.height = window_height
+            self.window.root.geometry(f"{window_width}x{window_height}")
+    
     # Создаем игру
-    game = SpaceCollector()
+    game = CustomGame()
     
     # Создаем движок
     engine = Engine(game)
-    engine.set_fps(60)
-    
-    # Запускаем
     game.set_engine(engine)
+    
+    # Запускаем игру
     game.start()
     
     # Запускаем главный цикл
