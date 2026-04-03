@@ -1,14 +1,14 @@
-# arcade_pong_90s_fixed.py
+# arcade_pong_gui.py
 import sys
 import os
 import random
 import math
-import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from gamelib import *
+from gamelib.core.model.gui.gui_factory import Label, Button, Panel
 
-# Константы
+
 SCREEN_WIDTH = 900
 SCREEN_HEIGHT = 600
 PADDLE_WIDTH = 20
@@ -22,9 +22,10 @@ WIN_SCORE = 7
 AI_DIFFICULTY = 0.04
 SPEED_BOOST = 0.2
 
-class ArcadePong90s(Game):
+
+class ArcadePongGUI(Game):
     def __init__(self):
-        super().__init__("ARCADEPONG 9000", SCREEN_WIDTH, SCREEN_HEIGHT, "#000000")
+        super().__init__("ARCADEPONG 9000", SCREEN_WIDTH + 200, SCREEN_HEIGHT, "#000000")
         self.scene_switcher = SceneSwitcher()
         self.input_manager = None
         
@@ -32,7 +33,7 @@ class ArcadePong90s(Game):
         self.left_score = 0
         self.right_score = 0
         
-        # Состояние игры
+        # Состояние
         self.game_active = True
         self.paused = False
         self.serving = True
@@ -44,17 +45,24 @@ class ArcadePong90s(Game):
         self.right_paddle = None
         self.ball = None
         
-        # Физика мяча
+        # Физика
         self.ball_dx = 0
         self.ball_dy = 0
         self.ball_speed = BALL_SPEED
         self.last_hit = None
         self.rally_count = 0
-        self.effects = []
         
+        # GUI элементы
+        self.left_score_label = None
+        self.right_score_label = None
+        self.status_label = None
+        self.mode_label = None
+        self.speed_label = None
+        self.rally_label = None
+    
     def setup(self):
         print("\n" + "="*60)
-        print("ARCADEPONG 9000 - РЕТРО 90-х")
+        print("ARCADEPONG 9000 - НОВАЯ GUI СИСТЕМА")
         print("="*60)
         print("\nУПРАВЛЕНИЕ:")
         print("  [W][S] - левый игрок")
@@ -69,11 +77,13 @@ class ArcadePong90s(Game):
         # Создаем сцену
         self.main_scene = Scene(self.window)
         
-        # Создаем объекты
+        # Создаем игровое поле
         self.create_arena()
         self.create_paddles()
         self.create_ball()
-        self.setup_gui()
+        
+        # Создаем GUI панель
+        self.create_gui_panel()
         
         # Показываем сцену
         self.scene_switcher.show_scene(self.main_scene)
@@ -84,7 +94,7 @@ class ArcadePong90s(Game):
         # Запускаем игровой цикл
         self.window.root.after(16, self.game_loop)
         
-        print("\n=== ARCADEPONG 9000 АКТИВИРОВАН ===\n")
+        print("=== ИГРА ЗАПУЩЕНА ===\n")
         print("🟢 НАЖМИТЕ [SPACE] ДЛЯ ПОДАЧИ!")
     
     def create_arena(self):
@@ -122,24 +132,6 @@ class ArcadePong90s(Game):
                 scene=self.main_scene
             )
         
-        # Декоративные элементы
-        for x in range(0, SCREEN_WIDTH, 30):
-            gameObject.Rectangle(
-                self.main_scene.canvas,
-                x=x, y=WALL_SIZE + 2,
-                width=10, height=2,
-                color='#00AA00',
-                scene=self.main_scene
-            )
-            
-            gameObject.Rectangle(
-                self.main_scene.canvas,
-                x=x, y=SCREEN_HEIGHT - WALL_SIZE - 4,
-                width=10, height=2,
-                color='#00AA00',
-                scene=self.main_scene
-            )
-        
         # Голевые зоны
         gameObject.Rectangle(
             self.main_scene.canvas,
@@ -156,26 +148,6 @@ class ArcadePong90s(Game):
             color='#002200',
             scene=self.main_scene
         )
-        
-        # Score панели слева
-        for i in range(5):
-            gameObject.Rectangle(
-                self.main_scene.canvas,
-                x=30, y=30 + i*15,
-                width=4, height=8,
-                color='#00AA00',
-                scene=self.main_scene
-            )
-        
-        # Score панели справа
-        for i in range(5):
-            gameObject.Rectangle(
-                self.main_scene.canvas,
-                x=SCREEN_WIDTH-34, y=30 + i*15,
-                width=4, height=8,
-                color='#00AA00',
-                scene=self.main_scene
-            )
     
     def create_paddles(self):
         """Создание ракеток"""
@@ -190,17 +162,6 @@ class ArcadePong90s(Game):
             scene=self.main_scene
         )
         
-        # Полоски на левой ракетке
-        for i in range(4):
-            gameObject.Rectangle(
-                self.main_scene.canvas,
-                x=42,
-                y=SCREEN_HEIGHT//2 - PADDLE_HEIGHT//2 + i*30 + 5,
-                width=3, height=10,
-                color='#FFFFFF',
-                scene=self.main_scene
-            )
-        
         # Правая ракетка
         self.right_paddle = gameObject.Rectangle(
             self.main_scene.canvas,
@@ -211,17 +172,6 @@ class ArcadePong90s(Game):
             color='#FF00FF',
             scene=self.main_scene
         )
-        
-        # Полоски на правой ракетке
-        for i in range(4):
-            gameObject.Rectangle(
-                self.main_scene.canvas,
-                x=SCREEN_WIDTH - 37 - PADDLE_WIDTH,
-                y=SCREEN_HEIGHT//2 - PADDLE_HEIGHT//2 + i*30 + 5,
-                width=3, height=10,
-                color='#FFFFFF',
-                scene=self.main_scene
-            )
     
     def create_ball(self):
         """Создание мяча"""
@@ -234,194 +184,144 @@ class ArcadePong90s(Game):
             color='#FFFFFF',
             scene=self.main_scene
         )
-        
-        # Внутренний квадратик
-        gameObject.Rectangle(
-            self.main_scene.canvas,
-            x=SCREEN_WIDTH//2 - 2,
-            y=SCREEN_HEIGHT//2 - 2,
-            width=4, height=4,
-            color='#AAAAAA',
-            scene=self.main_scene
-        )
     
-    def setup_gui(self):
-        """Настройка интерфейса"""
-        # Фрейм для счета
-        self.score_frame = tk.Frame(
-            self.window.root, 
-            bg='#000000', 
-            relief='sunken', 
-            bd=4
-        )
-        self.score_frame.place(x=SCREEN_WIDTH//2 - 200, y=15, width=400, height=70)
-        
-        # Левый счет - ВАЖНО: сохраняем ссылку до pack()
-        self.left_score_label = tk.Label(
-            self.score_frame,
-            text=f"{self.left_score:02d}",
-            font=("Courier", 36, "bold"),
-            bg='#000000',
-            fg='#00FF00'
-        )
-        self.left_score_label.pack(side='left', padx=40)
-        
-        # Разделитель
-        separator = tk.Label(
-            self.score_frame,
-            text=":",
-            font=("Courier", 36, "bold"),
-            bg='#000000',
-            fg='#00FF00'
-        )
-        separator.pack(side='left')
-        
-        # Правый счет - ВАЖНО: сохраняем ссылку до pack()
-        self.right_score_label = tk.Label(
-            self.score_frame,
-            text=f"{self.right_score:02d}",
-            font=("Courier", 36, "bold"),
-            bg='#000000',
-            fg='#00FF00'
-        )
-        self.right_score_label.pack(side='left', padx=40)
-        
-        # Фрейм управления
-        self.control_frame = tk.Frame(
-            self.window.root, 
-            bg='#222222', 
-            relief='raised', 
-            bd=5
-        )
-        self.control_frame.place(x=SCREEN_WIDTH + 10, y=10, width=180, height=380)
+    def create_gui_panel(self):
+        """Создание панели управления с новой GUI системой"""
+        # Основная панель справа
+        self.gui_panel = Panel(self.window.root, bg="#0a0a1a")
+        self.gui_panel.place(x=SCREEN_WIDTH + 10, y=10)
         
         # Заголовок
-        title = tk.Label(
-            self.control_frame,
-            text="PONG 9000",
-            font=("Courier", 14, "bold"),
-            bg='#222222',
-            fg='#00FF00'
-        )
+        title = Label(self.gui_panel.widget, text="PONG 9000", 
+                      font=("Courier", 16, "bold"), color="#00ff88", bg="#0a0a1a")
         title.pack(pady=10)
         
-        # LED панели
-        self.leds = {}
+        # Панель счета
+        score_panel = Panel(self.gui_panel.widget, bg="#1a1a2e")
+        score_panel.pack(pady=5, padx=10, fill="x")
+        
+        score_title = Label(score_panel.widget, text="СЧЕТ", 
+                           font=("Courier", 10), color="#00aa88", bg="#1a1a2e")
+        score_title.pack()
+        
+        # Счет в одну строку
+        score_row = Panel(score_panel.widget, bg="#1a1a2e")
+        score_row.pack(pady=5)
+        
+        self.left_score_label = Label(score_row.widget, text="00", 
+                                       font=("Courier", 24, "bold"), 
+                                       color="#00ff88", bg="#1a1a2e")
+        self.left_score_label.pack(side="left", padx=10)
+        
+        colon = Label(score_row.widget, text=":", 
+                     font=("Courier", 20, "bold"), 
+                     color="#ffffff", bg="#1a1a2e")
+        colon.pack(side="left")
+        
+        self.right_score_label = Label(score_row.widget, text="00", 
+                                        font=("Courier", 24, "bold"), 
+                                        color="#00ff88", bg="#1a1a2e")
+        self.right_score_label.pack(side="left", padx=10)
+        
+        # Информационная панель
+        info_panel = Panel(self.gui_panel.widget, bg="#1a1a2e")
+        info_panel.pack(pady=5, padx=10, fill="x")
         
         # Режим
-        mode_frame = tk.Frame(self.control_frame, bg='#111111', relief='sunken', bd=2)
-        mode_frame.pack(pady=2, padx=10, fill='x')
-        tk.Label(mode_frame, text="РЕЖИМ", font=("Courier", 8), bg='#111111', fg='#00AA00').pack(side='left', padx=5)
-        self.leds["РЕЖИМ"] = tk.Label(mode_frame, text="ИИ", font=("Courier", 10, "bold"), bg='#111111', fg='#00FF00')
-        self.leds["РЕЖИМ"].pack(side='right', padx=5)
+        mode_row = Panel(info_panel.widget, bg="#1a1a2e")
+        mode_row.pack(fill="x", pady=2)
         
-        # Счет
-        score_frame = tk.Frame(self.control_frame, bg='#111111', relief='sunken', bd=2)
-        score_frame.pack(pady=2, padx=10, fill='x')
-        tk.Label(score_frame, text="СЧЕТ", font=("Courier", 8), bg='#111111', fg='#00AA00').pack(side='left', padx=5)
-        self.leds["СЧЕТ"] = tk.Label(score_frame, text="0:0", font=("Courier", 10, "bold"), bg='#111111', fg='#00FF00')
-        self.leds["СЧЕТ"].pack(side='right', padx=5)
+        mode_text = Label(mode_row.widget, text="РЕЖИМ:", 
+                         font=("Courier", 9), color="#00aa88", bg="#1a1a2e")
+        mode_text.pack(side="left")
+        
+        self.mode_label = Label(mode_row.widget, text="ИИ", 
+                                font=("Courier", 10, "bold"), 
+                                color="#00ff88", bg="#1a1a2e")
+        self.mode_label.pack(side="right")
         
         # Скорость
-        speed_frame = tk.Frame(self.control_frame, bg='#111111', relief='sunken', bd=2)
-        speed_frame.pack(pady=2, padx=10, fill='x')
-        tk.Label(speed_frame, text="СПИД", font=("Courier", 8), bg='#111111', fg='#00AA00').pack(side='left', padx=5)
-        self.leds["СПИД"] = tk.Label(speed_frame, text="4.0", font=("Courier", 10, "bold"), bg='#111111', fg='#00FF00')
-        self.leds["СПИД"].pack(side='right', padx=5)
+        speed_row = Panel(info_panel.widget, bg="#1a1a2e")
+        speed_row.pack(fill="x", pady=2)
+        
+        speed_text = Label(speed_row.widget, text="СПИД:", 
+                          font=("Courier", 9), color="#00aa88", bg="#1a1a2e")
+        speed_text.pack(side="left")
+        
+        self.speed_label = Label(speed_row.widget, text="4.0", 
+                                 font=("Courier", 10, "bold"), 
+                                 color="#00ff88", bg="#1a1a2e")
+        self.speed_label.pack(side="right")
         
         # Розыгрыш
-        rally_frame = tk.Frame(self.control_frame, bg='#111111', relief='sunken', bd=2)
-        rally_frame.pack(pady=2, padx=10, fill='x')
-        tk.Label(rally_frame, text="РОЗЫГР", font=("Courier", 8), bg='#111111', fg='#00AA00').pack(side='left', padx=5)
-        self.leds["РОЗЫГР"] = tk.Label(rally_frame, text="0", font=("Courier", 10, "bold"), bg='#111111', fg='#00FF00')
-        self.leds["РОЗЫГР"].pack(side='right', padx=5)
+        rally_row = Panel(info_panel.widget, bg="#1a1a2e")
+        rally_row.pack(fill="x", pady=2)
         
-        # Кнопки
-        tk.Button(
-            self.control_frame,
-            text="ПОДАЧА [SPACE]",
-            font=("Courier", 10, "bold"),
-            bg='#333333',
-            fg='#00FF00',
-            activebackground='#00AA00',
-            command=self.serve_ball
-        ).pack(pady=3, padx=10, fill='x')
+        rally_text = Label(rally_row.widget, text="РОЗЫГР:", 
+                          font=("Courier", 9), color="#00aa88", bg="#1a1a2e")
+        rally_text.pack(side="left")
         
-        tk.Button(
-            self.control_frame,
-            text="ПАУЗА [P]",
-            font=("Courier", 10, "bold"),
-            bg='#333333',
-            fg='#00FF00',
-            command=self.toggle_pause
-        ).pack(pady=3, padx=10, fill='x')
+        self.rally_label = Label(rally_row.widget, text="0", 
+                                 font=("Courier", 10, "bold"), 
+                                 color="#00ff88", bg="#1a1a2e")
+        self.rally_label.pack(side="right")
         
-        tk.Button(
-            self.control_frame,
-            text="СБРОС [R]",
-            font=("Courier", 10, "bold"),
-            bg='#333333',
-            fg='#00FF00',
-            command=self.reset_score
-        ).pack(pady=3, padx=10, fill='x')
+        # Кнопки управления
+        btn_serve = Button(self.gui_panel.widget, text="ПОДАЧА", 
+                          command=self.serve_ball,
+                          font=("Courier", 10, "bold"), 
+                          color="#00ff88", bg="#2a2a3e")
+        btn_serve.pack(pady=3, padx=10, fill="x")
         
-        tk.Button(
-            self.control_frame,
-            text="ИИ/2P [A]",
-            font=("Courier", 10, "bold"),
-            bg='#333333',
-            fg='#00FF00',
-            command=self.toggle_mode
-        ).pack(pady=3, padx=10, fill='x')
+        btn_pause = Button(self.gui_panel.widget, text="ПАУЗА", 
+                          command=self.toggle_pause,
+                          font=("Courier", 10, "bold"), 
+                          color="#ffff00", bg="#2a2a3e")
+        btn_pause.pack(pady=3, padx=10, fill="x")
+        
+        btn_reset = Button(self.gui_panel.widget, text="СБРОС", 
+                          command=self.reset_score,
+                          font=("Courier", 10, "bold"), 
+                          color="#ff8866", bg="#2a2a3e")
+        btn_reset.pack(pady=3, padx=10, fill="x")
+        
+        btn_mode = Button(self.gui_panel.widget, text="ИИ/2P", 
+                         command=self.toggle_mode,
+                         font=("Courier", 10, "bold"), 
+                         color="#88aaff", bg="#2a2a3e")
+        btn_mode.pack(pady=3, padx=10, fill="x")
+        
+        # Статус
+        self.status_label = Label(self.gui_panel.widget, text="ГОТОВ", 
+                                   font=("Courier", 12, "bold"), 
+                                   color="#ffff00", bg="#0a0a1a")
+        self.status_label.pack(pady=10)
         
         # Инструкция
-        instr = tk.Label(
-            self.control_frame,
-            text="W/S - ЛЕВЫЙ\n↑/↓ - ПРАВЫЙ\nESC - ВЫХОД",
-            font=("Courier", 9),
-            bg='#222222',
-            fg='#AAAAAA',
-            justify='left'
-        )
-        instr.pack(pady=10)
-        
-        # LED статуса
-        self.status_led = tk.Label(
-            self.control_frame,
-            text="ГОТОВ",
-            font=("Courier", 12, "bold"),
-            bg='#000000',
-            fg='#00FF00',
-            relief='sunken',
-            bd=2
-        )
-        self.status_led.pack(pady=5, padx=10, fill='x')
+        instr = Label(self.gui_panel.widget, 
+                      text="W/S - ЛЕВЫЙ\n↑/↓ - ПРАВЫЙ\nESC - ВЫХОД",
+                      font=("Courier", 8), color="#888888", bg="#0a0a1a")
+        instr.pack(pady=5)
     
     def game_loop(self):
         """Основной игровой цикл"""
         if not self.paused and self.game_active and not self.serving:
             self.update_ball_position()
         
-        # Очищаем старые эффекты
-        self.clear_effects()
-        
-        # Обновляем LED индикаторы
-        if "РЕЖИМ" in self.leds:
-            self.leds["РЕЖИМ"].config(text="ИИ" if self.vs_ai else "2P")
-        if "СЧЕТ" in self.leds:
-            self.leds["СЧЕТ"].config(text=f"{self.left_score}:{self.right_score}")
-        if "СПИД" in self.leds:
-            self.leds["СПИД"].config(text=f"{self.ball_speed:.1f}")
-        if "РОЗЫГР" in self.leds:
-            self.leds["РОЗЫГР"].config(text=str(self.rally_count))
+        # Обновляем GUI
+        self.update_gui()
         
         # Следующий кадр
         self.window.root.after(16, self.game_loop)
     
-    def clear_effects(self):
-        """Очистка старых эффектов"""
-        current_time = time.time()
-        self.effects = [e for e in self.effects if e[1] > current_time]
+    def update_gui(self):
+        """Обновление GUI элементов"""
+        if self.left_score_label:
+            self.left_score_label.set_text(f"{self.left_score:02d}")
+            self.right_score_label.set_text(f"{self.right_score:02d}")
+            self.speed_label.set_text(f"{self.ball_speed:.1f}")
+            self.rally_label.set_text(str(self.rally_count))
+            self.mode_label.set_text("ИИ" if self.vs_ai else "2P")
     
     def update_ball_position(self):
         """Обновление позиции мяча"""
@@ -436,14 +336,12 @@ class ArcadePong90s(Game):
         if new_y <= WALL_SIZE:
             new_y = WALL_SIZE
             self.ball_dy = abs(self.ball_dy) * 0.95
-            self.add_effect(new_x, new_y, "wall")
         
         if new_y >= SCREEN_HEIGHT - BALL_SIZE - WALL_SIZE:
             new_y = SCREEN_HEIGHT - BALL_SIZE - WALL_SIZE
             self.ball_dy = -abs(self.ball_dy) * 0.95
-            self.add_effect(new_x, new_y, "wall")
         
-        # Проверка коллизий с ракетками
+        # Проверка коллизий
         self.check_paddle_collisions(x, y)
         
         # Проверка голов
@@ -469,7 +367,7 @@ class ArcadePong90s(Game):
         
         # Левая ракетка
         left_x, left_y = self.left_paddle.get_position()
-        if self.ball_dx < 0:  # Мяч движется влево
+        if self.ball_dx < 0:
             if (bx < left_x + PADDLE_WIDTH and 
                 bx + BALL_SIZE > left_x and 
                 by < left_y + PADDLE_HEIGHT and 
@@ -483,17 +381,13 @@ class ArcadePong90s(Game):
                 self.ball_dx = abs(self.ball_speed * math.cos(math.radians(angle)))
                 self.ball_dy = self.ball_speed * math.sin(math.radians(angle))
                 
-                if self.last_hit == "left":
-                    self.ball_dy += random.uniform(-0.5, 0.5)
-                
                 self.last_hit = "left"
                 self.rally_count += 1
                 self.flash_paddle(self.left_paddle)
-                self.add_effect(bx, by, "paddle")
         
         # Правая ракетка
         right_x, right_y = self.right_paddle.get_position()
-        if self.ball_dx > 0:  # Мяч движется вправо
+        if self.ball_dx > 0:
             if (bx < right_x + PADDLE_WIDTH and 
                 bx + BALL_SIZE > right_x and 
                 by < right_y + PADDLE_HEIGHT and 
@@ -507,13 +401,9 @@ class ArcadePong90s(Game):
                 self.ball_dx = -abs(self.ball_speed * math.cos(math.radians(angle)))
                 self.ball_dy = self.ball_speed * math.sin(math.radians(angle))
                 
-                if self.last_hit == "right":
-                    self.ball_dy += random.uniform(-0.5, 0.5)
-                
                 self.last_hit = "right"
                 self.rally_count += 1
                 self.flash_paddle(self.right_paddle)
-                self.add_effect(bx, by, "paddle")
     
     def normalize_speed(self):
         """Нормализация скорости"""
@@ -523,32 +413,8 @@ class ArcadePong90s(Game):
             self.ball_dx *= factor
             self.ball_dy *= factor
     
-    def add_effect(self, x, y, effect_type):
-        """Добавление ретро-эффектов"""
-        if effect_type == "paddle":
-            for _ in range(3):
-                spark_x = x + random.randint(-5, 5)
-                spark_y = y + random.randint(-5, 5)
-                spark = self.main_scene.canvas.create_oval(
-                    spark_x, spark_y,
-                    spark_x + 2, spark_y + 2,
-                    fill='#FFFF00',
-                    outline=''
-                )
-                self.effects.append((spark, time.time() + 0.05))
-                self.window.root.after(50, lambda s=spark: self.main_scene.canvas.delete(s))
-        
-        elif effect_type == "wall":
-            line = self.main_scene.canvas.create_line(
-                x, y, x + BALL_SIZE, y + BALL_SIZE,
-                fill='#00FF00',
-                width=1
-            )
-            self.effects.append((line, time.time() + 0.05))
-            self.window.root.after(50, lambda l=line: self.main_scene.canvas.delete(l))
-    
     def flash_paddle(self, paddle):
-        """Эффект мигания ракетки"""
+        """Эффект мигания"""
         if hasattr(paddle, 'rect_id'):
             original = self.main_scene.canvas.itemcget(paddle.rect_id, 'fill')
             self.main_scene.canvas.itemconfig(paddle.rect_id, fill='#FFFFFF')
@@ -577,15 +443,15 @@ class ArcadePong90s(Game):
         self.ball_dy = self.ball_speed * math.sin(math.radians(base_angle))
         
         self.serving = False
-        self.status_led.config(text="ИГРА")
+        self.status_label.set_text("ИГРА")
         print(f"🎾 ПОДАЧА! Угол: {base_angle:.1f}°")
     
     def score_point(self, side):
         """Начисление очка"""
-        # Эффект "GOAL"
+        # Эффект
         goal_text = self.main_scene.canvas.create_text(
             SCREEN_WIDTH//2, SCREEN_HEIGHT//2,
-            text="⚡ GOAL! ⚡",
+            text="GOAL!",
             font=("Courier", 24, "bold"),
             fill='#00FF00'
         )
@@ -601,12 +467,10 @@ class ArcadePong90s(Game):
         
         if side == "left":
             self.left_score += 1
-            self.left_score_label.config(text=f"{self.left_score:02d}")
             self.server = "right"
             print(f"\n⚡ ГОЛ ЛЕВОГО! Счет: {self.left_score}:{self.right_score}")
         else:
             self.right_score += 1
-            self.right_score_label.config(text=f"{self.right_score:02d}")
             self.server = "left"
             print(f"\n⚡ ГОЛ ПРАВОГО! Счет: {self.left_score}:{self.right_score}")
         
@@ -616,13 +480,12 @@ class ArcadePong90s(Game):
         elif self.right_score >= WIN_SCORE:
             self.game_over("ПРАВЫЙ")
         else:
-            self.status_led.config(text="ПОДАЧА")
+            self.status_label.set_text("ПОДАЧА")
             print("🟢 НАЖМИТЕ [SPACE] ДЛЯ ПОДАЧИ")
     
     def game_over(self, winner):
         """Конец игры"""
         self.game_active = False
-        print(f"\n🏆 ПОБЕДИТЕЛЬ: {winner}!")
         
         self.main_scene.canvas.create_text(
             SCREEN_WIDTH//2, SCREEN_HEIGHT//2 - 50,
@@ -631,7 +494,8 @@ class ArcadePong90s(Game):
             fill='#00FF00'
         )
         
-        self.status_led.config(text="GAME OVER")
+        self.status_label.set_text("GAME OVER")
+        print(f"\n🏆 ПОБЕДИТЕЛЬ: {winner}!")
     
     def update_ai(self):
         """Обновление ИИ"""
@@ -641,31 +505,19 @@ class ArcadePong90s(Game):
         ball_x, ball_y = self.ball.get_position()
         paddle_x, paddle_y = self.right_paddle.get_position()
         
-        if self.ball_dx > 0:  # Мяч летит к ИИ
-            # Время до достижения
+        if self.ball_dx > 0:
             time_to_reach = (paddle_x - ball_x) / self.ball_dx if self.ball_dx > 0 else 1000
-            
-            # Предсказанная позиция Y
             predicted_y = ball_y + self.ball_dy * time_to_reach
             
-            # Учитываем отскоки от стен
             while predicted_y < WALL_SIZE or predicted_y > SCREEN_HEIGHT - BALL_SIZE - WALL_SIZE:
                 if predicted_y < WALL_SIZE:
                     predicted_y = WALL_SIZE + (WALL_SIZE - predicted_y)
                 if predicted_y > SCREEN_HEIGHT - BALL_SIZE - WALL_SIZE:
                     predicted_y = (SCREEN_HEIGHT - BALL_SIZE - WALL_SIZE) - (predicted_y - (SCREEN_HEIGHT - BALL_SIZE - WALL_SIZE))
             
-            # Цель для ракетки
             target_y = predicted_y - PADDLE_HEIGHT//2
-            
-            # Случайность для реализма
-            if random.random() < 0.3:
-                target_y += random.randint(-20, 20)
-            
-            # Ограничиваем
             target_y = max(WALL_SIZE, min(target_y, SCREEN_HEIGHT - PADDLE_HEIGHT - WALL_SIZE))
             
-            # Плавное движение
             diff = target_y - paddle_y
             move = diff * AI_DIFFICULTY
             if abs(move) > PADDLE_SPEED * 0.5:
@@ -677,7 +529,7 @@ class ArcadePong90s(Game):
         """Пауза"""
         if self.game_active:
             self.paused = not self.paused
-            self.status_led.config(text="ПАУЗА" if self.paused else "ИГРА")
+            self.status_label.set_text("ПАУЗА" if self.paused else "ИГРА")
             print("⏸ ПАУЗА" if self.paused else "▶ ПРОДОЛЖЕНИЕ")
     
     def toggle_mode(self):
@@ -687,13 +539,11 @@ class ArcadePong90s(Game):
         print(f"\n🔄 РЕЖИМ: {mode}")
     
     def reset_score(self):
-        """Сброс счета"""
+        """Сброс"""
         print("\n🔄 СБРОС")
         
         self.left_score = 0
         self.right_score = 0
-        self.left_score_label.config(text="00")
-        self.right_score_label.config(text="00")
         
         self.game_active = True
         self.serving = True
@@ -709,15 +559,15 @@ class ArcadePong90s(Game):
             SCREEN_HEIGHT//2 - BALL_SIZE//2
         )
         
-        self.status_led.config(text="ГОТОВ")
+        self.status_label.set_text("ГОТОВ")
         print("🟢 НАЖМИТЕ [SPACE] ДЛЯ НАЧАЛА")
     
     def update(self):
-        """Игровой цикл (вызывается движком)"""
+        """Игровой цикл"""
         if not self.game_active or self.paused:
             return
         
-        # Управление левой ракеткой
+        # Левая ракетка
         left_x, left_y = self.left_paddle.get_position()
         
         if self.input_manager.is_key_down('w'):
@@ -728,7 +578,7 @@ class ArcadePong90s(Game):
             new_y = min(SCREEN_HEIGHT - PADDLE_HEIGHT - WALL_SIZE, left_y + PADDLE_SPEED)
             self.left_paddle.update_position(left_x, new_y)
         
-        # Управление правой ракеткой
+        # Правая ракетка
         if not self.vs_ai:
             right_x, right_y = self.right_paddle.get_position()
             
@@ -742,10 +592,9 @@ class ArcadePong90s(Game):
         else:
             self.update_ai()
         
-        # Обработка клавиш
-        if self.input_manager.is_key_down('space'):
-            if self.serving and self.game_active:
-                self.serve_ball()
+        # Клавиши
+        if self.input_manager.is_key_down('space') and self.serving and self.game_active:
+            self.serve_ball()
         
         if self.input_manager.is_key_down('p'):
             self.toggle_pause()
@@ -762,30 +611,14 @@ class ArcadePong90s(Game):
         if self.input_manager.is_key_down('Escape'):
             self.window.root.quit()
 
+
 def main():
-    # Создаем окно
-    window_width = SCREEN_WIDTH + 200
-    window_height = SCREEN_HEIGHT
-    
-    class CustomPong(ArcadePong90s):
-        def __init__(self):
-            super().__init__()
-            self.window.width = window_width
-            self.window.height = window_height
-            self.window.root.geometry(f"{window_width}x{window_height}")
-            self.window.root.configure(bg='#000000')
-            self.window.root.title("ARCADEPONG 9000")
-    
-    # Создаем игру
-    game = CustomPong()
-    
-    # Создаем движок
+    game = ArcadePongGUI()
     engine = Engine(game)
     game.set_engine(engine)
-    
-    # Запускаем
     game.start()
     game.window.root.mainloop()
+
 
 if __name__ == "__main__":
     main()

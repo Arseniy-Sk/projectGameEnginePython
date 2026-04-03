@@ -647,3 +647,343 @@ def update(self):
 ## **Заключение**
 
 GameLib предоставляет гибкую компонентно-ориентированную архитектуру для создания 2D игр на Python. Благодаря системе событий, компонентам и векторной математике, библиотека подходит для обучения и создания небольших игровых проектов.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```markdown
+# GameLib - Игровой фреймворк на Python
+
+GameLib - это простой и понятный фреймворк для создания 2D игр на Python с использованием Tkinter. Фреймворк построен на компонентной архитектуре и предоставляет все необходимые инструменты для быстрой разработки игр.
+
+## Особенности
+
+- 🎮 **Компонентная архитектура** - гибкая система компонентов для игровых объектов
+- 🎬 **Система сцен** - удобное переключение между игровыми сценами
+- ⚡ **Физический движок** - гравитация, импульсы, коллизии
+- 🎯 **Система коллизий** - обнаружение столкновений с триггерами
+- 📡 **Событийная система** - EventBus для слабой связанности компонентов
+- 📐 **Векторная математика** - класс Vector2 для удобной работы с координатами
+- ⌨️ **Система ввода** - обработка клавиатурного ввода
+- 🎨 **GUI система** - простые и стильные элементы интерфейса
+- 🖼️ **Работа с изображениями** - загрузка и отображение спрайтов
+- 🎵 **Аудио система** - поддержка звуков и музыки (WAV, MP3)
+
+## Установка
+
+```bash
+pip install -e .
+```
+
+### Требования
+
+- Python 3.7+
+- Tkinter (входит в стандартную установку Python)
+- Pillow (для работы с изображениями)
+- pydub (для аудио, опционально)
+
+## Быстрый старт
+
+```python
+from gamelib import *
+
+class MyGame(Game):
+    def setup(self):
+        # Создаем сцену
+        scene = Scene(self.window)
+        SceneSwitcher().show_scene(scene)
+        
+        # Создаем игрока
+        self.player = gameObject.Rectangle(
+            scene.canvas,
+            x=100, y=100,
+            width=50, height=50,
+            color='red',
+            scene=scene
+        )
+        
+        # Добавляем физику
+        physics = BasePhisicComponent(mass=10, gravity=True)
+        self.player.add_component(physics)
+        
+        # Настраиваем ввод
+        self.input_manager = InputManager(self.window.root)
+    
+    def update(self):
+        # Движение игрока
+        if self.input_manager.is_key_down('a'):
+            x, y = self.player.get_position()
+            self.player.update_position(x - 5, y)
+
+# Запуск игры
+game = MyGame()
+engine = Engine(game)
+game.set_engine(engine)
+game.start()
+game.window.root.mainloop()
+```
+
+## Основные компоненты
+
+### 1. Создание игрового окна
+
+```python
+window = main_game_window("Название игры", 800, 600, "black")
+```
+
+### 2. Сцены
+
+```python
+# Создание сцены
+scene = Scene(window)
+
+# Переключение между сценами
+switcher = SceneSwitcher()
+switcher.show_scene(scene)
+switcher.close_scene(scene)
+switcher.switch_scene(scene1, scene2)
+```
+
+### 3. Игровые объекты
+
+```python
+# Создание прямоугольника
+obj = gameObject.Rectangle(
+    canvas,
+    x=0, y=0,           # позиция
+    width=100, height=100,  # размер
+    color='red',        # цвет
+    scene=scene
+)
+
+# Методы объекта
+obj.get_position()      # получить позицию
+obj.update_position(x, y)  # изменить позицию
+obj.get_center()        # получить центр
+obj.add_component(component)  # добавить компонент
+```
+
+### 4. Компоненты
+
+#### Физический компонент
+
+```python
+physics = BasePhisicComponent(mass=20, gravity=True)
+obj.add_component(physics)
+
+# Применение импульса
+physics.impulse(50, Vector2(1, 0))  # сила, направление
+physics.stop_gravity()  # остановить гравитацию
+```
+
+#### Компонент изображения
+
+```python
+image = ImageComponent("путь/к/изображению.png")
+obj.add_component(image)
+```
+
+#### Компонент коллизий
+
+```python
+collider = Box_collider(is_trigger=False)
+obj.add_component(collider)
+collider.check_collision(other_obj, on_collision)
+```
+
+### 5. GUI система
+
+```python
+from gamelib.core.model.gui.gui_factory import Label, Button, Panel
+
+# Создание панели
+panel = Panel(parent, bg="#1a1a2e")
+panel.pack(pady=10)
+
+# Текстовая метка
+label = Label(panel.widget, text="Привет!", font=("Arial", 12), color="white", bg="#1a1a2e")
+label.pack()
+
+# Кнопка
+def on_click():
+    label.set_text("Нажато!")
+
+button = Button(panel.widget, text="Нажми", command=on_click, color="white", bg="#333344")
+button.pack()
+
+# Чекбокс
+checkbox = CheckBox(panel.widget, text="Опция", on_change=lambda checked: print(checked))
+
+# Слайдер
+slider = Slider(panel.widget, from_=0, to=100, on_change=lambda val: print(val))
+
+# Выпадающий список
+dropdown = DropDown(panel.widget, items=["1", "2", "3"], on_select=lambda item: print(item))
+
+# Поле ввода
+text_input = TextInput(panel.widget, placeholder="Введите текст...", on_change=lambda text: print(text))
+```
+
+### 6. Векторная математика
+
+```python
+from gamelib.core.model.vectors.verctor2 import Vector2
+
+v = Vector2(10, 20)
+v2 = Vector2.from_angle(100, 45)  # длина, угол
+v3 = v.normalized()  # нормализация
+length = v.magnitude()  # длина
+angle = v.angle()  # угол в градусах
+result = v + v2  # сложение
+result = v * 2  # умножение на скаляр
+```
+
+### 7. Система событий
+
+```python
+from gamelib.core.model.events.events_system import global_bus
+
+# Подписка на события
+def on_collision(event):
+    print(f"Столкновение: {event.data}")
+
+global_bus.subscribe(player, 'collision_enter', on_collision)
+
+# Генерация события
+global_bus.emit(player, 'custom_event', {'data': 'value'})
+```
+
+### 8. Система ввода
+
+```python
+input_manager = InputManager(window.root)
+
+# Проверка нажатия клавиш
+if input_manager.is_key_down('w'):
+    move_up()
+if input_manager.is_key_down('space'):
+    jump()
+if input_manager.is_key_down('Escape'):
+    quit_game()
+```
+
+### 9. Аудио система
+
+```python
+from gamelib.core.model.audio.audio_system import global_audio
+from gamelib.core.model.components.audio_component import AudioSource
+
+# Загрузка звука
+audio = AudioSource()
+audio.add_sound("jump", "sound.wav")
+audio.play("jump")
+
+# Фоновая музыка
+global_audio.play_music("music.mp3", loop=True)
+global_audio.stop_music()
+global_audio.set_music_volume(0.5)
+```
+
+## Примеры
+
+### Простая игра с платформером
+
+```python
+class Platformer(Game):
+    def setup(self):
+        scene = Scene(self.window)
+        SceneSwitcher().show_scene(scene)
+        
+        # Игрок
+        self.player = gameObject.Rectangle(
+            scene.canvas, 100, 500, 30, 30, 'red', scene
+        )
+        self.physics = BasePhisicComponent(10, True)
+        self.player.add_component(self.physics)
+        
+        # Земля
+        ground = gameObject.Rectangle(
+            scene.canvas, 0, 550, 800, 50, 'green', scene
+        )
+        
+        self.input = InputManager(self.window.root)
+    
+    def update(self):
+        if self.input.is_key_down('a'):
+            x, y = self.player.get_position()
+            self.player.update_position(x - 5, y)
+        if self.input.is_key_down('d'):
+            x, y = self.player.get_position()
+            self.player.update_position(x + 5, y)
+        if self.input.is_key_down('space'):
+            self.physics.impulse(15, Vector2(0, -1))
+```
+
+## Структура проекта
+
+```
+gamelib/
+├── core/
+│   └── model/
+│       ├── audio/          # Аудио система
+│       ├── camera/         # Камера
+│       ├── components/     # Компоненты (физика, коллизии, изображения)
+│       ├── engine.py       # Основной движок
+│       ├── events/         # Система событий
+│       ├── factory/        # Фабрика объектов
+│       ├── gui/            # GUI система
+│       ├── input/          # Система ввода
+│       ├── phisics/        # Физическая логика
+│       ├── render/         # Рендеринг
+│       ├── scenes/         # Система сцен
+│       └── vectors/        # Векторная математика
+└── data/                   # Данные и версии
+```
+
+## Горячие клавиши в примерах
+
+- **W/A/S/D** - движение
+- **Пробел** - прыжок/подача
+- **P** - пауза
+- **R** - сброс
+- **ESC** - выход
+- **Q/E** - зум камеры
+- **F** - эффект дрожания камеры
+
+## Лицензия
+
+MIT License
+
+## Автор
+
+Zubanov A.S
+
+## Благодарности
+
+Фреймворк создан для обучения и быстрой разработки 2D игр на Python.
+```
