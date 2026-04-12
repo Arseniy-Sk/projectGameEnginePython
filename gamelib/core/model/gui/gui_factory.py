@@ -1,10 +1,7 @@
-# gamelib/core/model/gui/gui_factory.py
 import tkinter as tk
 
 
 class Label:
-    """Простая текстовая метка"""
-    
     def __init__(self, parent, text="", font=("Arial", 12), color="white", bg=None):
         self.widget = tk.Label(parent, text=text, font=font, fg=color, bg=bg)
     
@@ -27,8 +24,6 @@ class Label:
 
 
 class Button:
-    """Простая кнопка"""
-    
     def __init__(self, parent, text="", command=None, font=("Arial", 12), 
                  color="white", bg="#333333"):
         self.widget = tk.Button(
@@ -58,8 +53,6 @@ class Button:
 
 
 class CheckBox:
-    """Простой чекбокс"""
-    
     def __init__(self, parent, text="", default=False, on_change=None,
                  color="white", bg=None):
         self.var = tk.BooleanVar(value=default)
@@ -95,8 +88,6 @@ class CheckBox:
 
 
 class Slider:
-    """Простой ползунок"""
-    
     def __init__(self, parent, from_=0, to=100, default=50, on_change=None,
                  length=200, bg=None):
         self.on_change = on_change
@@ -123,8 +114,6 @@ class Slider:
 
 
 class DropDown:
-    """Простой выпадающий список"""
-    
     def __init__(self, parent, items=[], default=None, on_select=None,
                  color="white", bg="#333333"):
         self.on_select = on_select
@@ -154,8 +143,6 @@ class DropDown:
 
 
 class TextInput:
-    """Простое поле ввода"""
-    
     def __init__(self, parent, placeholder="", width=20, on_change=None,
                  color="white", bg="#333333", placeholder_color="gray"):
         self.on_change = on_change
@@ -189,9 +176,7 @@ class TextInput:
     
     def get_text(self):
         text = self.widget.get()
-        if text == self.placeholder:
-            return ""
-        return text
+        return "" if text == self.placeholder else text
     
     def set_text(self, text):
         self.widget.delete(0, tk.END)
@@ -218,8 +203,6 @@ class TextInput:
 
 
 class Panel:
-    """Простой контейнер"""
-    
     def __init__(self, parent, bg=None):
         self.widget = tk.Frame(parent, bg=bg)
     

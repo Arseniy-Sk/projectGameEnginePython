@@ -9,3 +9,4 @@ from gamelib.core.model.vectors.verctor2 import *
 from gamelib.core.model.input.input_system import *
 from gamelib.core.model.events.events_system import *
 from gamelib.core.model.gui.gui_factory import *
+from gamelib.core.model.camera.camera import *

@@ -3,8 +3,9 @@ from gamelib.core.model.audio.audio_system import global_audio
 from gamelib.core.model.components.image_for_base_gameObj import Component
 from gamelib.core.model.events.events_system import global_bus
 
+
 class AudioSource(Component):
-    """Компонент для воспроизведения звуков от игрового объекта"""
+    """Компонент для воспроизведения звуков"""
     
     def __init__(self):
         super().__init__()
@@ -22,19 +23,21 @@ class AudioSource(Component):
         return False
     
     def play(self, sound_name, volume=None):
-        if sound_name in self.sounds:
-            global_audio.play_sound(self.sounds[sound_name], volume)
-        else:
-            print(f"⚠️ Звук {sound_name} не найден")
+        sound_key = self.sounds.get(sound_name)
+        if sound_key:
+            global_audio.play_sound(sound_key, volume)
     
     def set_collision_sound(self, sound_name):
         self.auto_play_on_collision = sound_name
     
     def on_collision(self, other):
-        if self.auto_play_on_collision:
-            self.play(self.auto_play_on_collision)
-            global_bus.emit(self.obj, 'collision_sound_played', 
-                           {'sound': self.auto_play_on_collision, 'other': other})
+        if not self.auto_play_on_collision:
+            return
+        
+        self.play(self.auto_play_on_collision)
+        global_bus.emit(self.obj, 'collision_sound_played', 
+                       {'sound': self.auto_play_on_collision, 'other': other})
+
 
 class AudioListener(Component):
     """Компонент для прослушивания событий"""
@@ -48,12 +51,12 @@ class AudioListener(Component):
         global_bus.subscribe(obj, None, self.on_event)
     
     def on_event(self, event):
-        if event.type in self.event_sounds:
-            global_audio.play_sound(self.event_sounds[event.type])
+        sound_key = self.event_sounds.get(event.type)
+        if sound_key:
+            global_audio.play_sound(sound_key)
     
     def bind_event(self, event_type, sound_name):
         self.event_sounds[event_type] = sound_name
     
     def unbind_event(self, event_type):
-        if event_type in self.event_sounds:
-            del self.event_sounds[event_type]
+        self.event_sounds.pop(event_type, None)

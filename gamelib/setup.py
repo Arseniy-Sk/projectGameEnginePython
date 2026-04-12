@@ -1,10 +1,8 @@
-# setup.py
 from setuptools import setup, find_packages
 import re
 
-# Читаем версию
 with open('gamelib/data/version.py', 'r') as f:
-    version = re.search(r'__version__\s*=\s*[\'"]([^\'"]*)[\'"]', f.read()).group(1)
+    version = re.search(r"__version__\s*=\s*['\"]([^'\"]*)['\"]", f.read()).group(1)
 
 setup(
     name="gamelib",
@@ -14,10 +12,7 @@ setup(
     author="Zubanov A.S",
     author_email="zzz",
     python_requires='>=3.7',
-    install_requires=[
-        'pillow>=8.0.0',
-        'pydub>=0.25.0',
-    ],
+    install_requires=['pillow>=8.0.0', 'pydub>=0.25.0'],
     extras_require={
         'audio': ['pydub>=0.25.0'],
         'full': ['pillow>=8.0.0', 'pydub>=0.25.0'],
