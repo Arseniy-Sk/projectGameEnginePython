@@ -1,0 +1,32 @@
+"""Pong cfg"""
+
+# Экран
+SCREEN_WIDTH = 900
+SCREEN_HEIGHT = 600
+GUI_WIDTH = 200
+
+# Объекты
+PADDLE_W = 20
+PADDLE_H = 120
+BALL_SIZE = 10
+WALL = 15
+
+# Скорости
+PADDLE_SPEED = 10
+BALL_SPEED = 4
+BALL_MAX = 12
+SPEED_UP = 0.2
+
+# Правила
+WIN_SCORE = 7
+AI_SPEED = 0.04
+
+# Цвета
+C_BG = '#001100'
+C_WALL = '#00FF00'
+C_P1 = '#00FFFF'
+C_P2 = '#FF00FF'
+C_BALL = '#FFFFFF'
+C_GUI = '#0A0A1A'
+C_PANEL = '#1A1A2E'
+C_TEXT = '#00FF88'
